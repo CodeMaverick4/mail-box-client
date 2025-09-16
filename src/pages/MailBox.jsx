@@ -1,24 +1,52 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+// import { db } from "../firebase"; 
+
 import { Container, Form, Button, InputGroup, Row, Col } from "react-bootstrap";
 import { TypeBold, TypeItalic, Paperclip, Link } from "react-bootstrap-icons";
+import { db } from "../firebase";
+import axios from "axios";
 
 function MailForm() {
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
     const [message, setMessage] = useState("");
+    const messageRef = useRef(null);
 
-    const handleSend = () => {
-        alert(`Mail sent!\nFrom: ${from}\nTo: ${to}\nMessage: ${message}`);
-        setFrom("");
-        setTo("");
-        setMessage("");
+
+    const handleSend = async () => {
+        const messageContent = messageRef.current.innerHTML; // get content from contentEditable
+        if (!from || !to || !messageContent) {
+            alert("Please fill all fields!");
+            return;
+        }
+
+        try {
+            await axios.post(
+                "https://todo-app-75d12-default-rtdb.firebaseio.com/mails.json",
+                {
+                    from,
+                    to,
+                    message: messageContent,
+                    timestamp: new Date().toISOString(),
+                }
+            );
+
+            alert("Mail sent and saved to Firebase Realtime Database!");
+            setFrom("");
+            setTo("");
+            if (messageRef.current) messageRef.current.innerHTML = "";
+        } catch (error) {
+            console.error("Error sending mail:", error);
+            alert("Failed to send mail. Check console for details.");
+        }
     };
 
     const makeBold = () => {
         const selection = window.getSelection();
         if (!selection.isCollapsed) {
-            document.execCommand("bold");   // Only applies to selected text
-            selection.collapseToEnd();      // Collapse selection so typing is normal
+            document.execCommand("bold");
+            selection.collapseToEnd();
         }
     };
 
@@ -72,6 +100,8 @@ function MailForm() {
                             </InputGroup>
 
                             <div
+                                ref={messageRef
+                                }
                                 contentEditable={true}
                                 className="form-control "
                                 style={{
@@ -89,7 +119,7 @@ function MailForm() {
                     </Form>
                 </Col>
             </Row>
-        </Container>
+        </Container >
     );
 }
 
