@@ -128,7 +128,7 @@ const Signup = () => {
               <Button
                 variant="link"
                 className="mt-3 w-100"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/login")}
               >
                 Have an account? <span>Login</span>
               </Button>
