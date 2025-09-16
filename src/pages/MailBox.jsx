@@ -1,21 +1,18 @@
-import React, { useRef, useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-// import { db } from "../firebase"; 
-
+import { useRef, useState } from "react";
 import { Container, Form, Button, InputGroup, Row, Col } from "react-bootstrap";
 import { TypeBold, TypeItalic, Paperclip, Link } from "react-bootstrap-icons";
-import { db } from "../firebase";
 import axios from "axios";
+import { useNavigate } from "react-router";
 
 function MailForm() {
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
     const [message, setMessage] = useState("");
     const messageRef = useRef(null);
-
+    const navigate = useNavigate();
 
     const handleSend = async () => {
-        const messageContent = messageRef.current.innerHTML; // get content from contentEditable
+        const messageContent = messageRef.current.innerHTML;
         if (!from || !to || !messageContent) {
             alert("Please fill all fields!");
             return;
@@ -29,6 +26,7 @@ function MailForm() {
                     to,
                     message: messageContent,
                     timestamp: new Date().toISOString(),
+                    read:false
                 }
             );
 
@@ -36,6 +34,7 @@ function MailForm() {
             setFrom("");
             setTo("");
             if (messageRef.current) messageRef.current.innerHTML = "";
+            navigate('/home')
         } catch (error) {
             console.error("Error sending mail:", error);
             alert("Failed to send mail. Check console for details.");
