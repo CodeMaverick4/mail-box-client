@@ -8,28 +8,25 @@ export default function Home() {
   const [mails, setMails] = useState([]);
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [unreadCount,setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchMails = async () => {
     try {
       const url = `https://todo-app-75d12-default-rtdb.firebaseio.com/mails.json`;
       const response = await axios.get(url);
-      
-      let unreadCount = 0
+
+      let unread = 0;
 
       if (response.data) {
         const mailList = Object.keys(response.data)
           .map((key) => {
-            if(!response.data[key].read){
-              unreadCount+=1
-            }
-
-            return ({id: key,...response.data[key]})
+            if (!response.data[key].read) unread += 1;
+            return { id: key, ...response.data[key] };
           })
-        // .filter((mail) => mail.to === user.email)
-        // .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          // .filter((mail) => mail.to === user.email)
+          // .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        setUnreadCount(unreadCount);
+        setUnreadCount(unread);
         setMails(mailList);
       }
     } catch (error) {
@@ -37,26 +34,41 @@ export default function Home() {
     }
   };
 
-  const handleMailClick = async (mail) => {    
+  const handleMailClick = async (mail) => {
     if (!mail.read) {
       try {
-        const updateUrl = `https://todo-app-75d12-default-rtdb.firebaseio.com/mails/${mail.id}.json`;        
+        const updateUrl = `https://todo-app-75d12-default-rtdb.firebaseio.com/mails/${mail.id}.json`;
         await axios.put(updateUrl, { ...mail, read: true });
+
         setMails((prevMails) =>
-          prevMails.map((m) =>
-            m.id === mail.id ? { ...m, read: true } : m
-          )
+          prevMails.map((m) => (m.id === mail.id ? { ...m, read: true } : m))
         );
-        setUnreadCount(prev=>prev-1);
+        setUnreadCount((prev) => prev - 1);
       } catch (error) {
         console.error("Error marking mail as read:", error);
       }
     }
   };
 
+  const handleDelete = async (mail) => {
+    try {
+      const deleteUrl = `https://todo-app-75d12-default-rtdb.firebaseio.com/mails/${mail.id}.json`;
+      await axios.delete(deleteUrl);
+
+      // Update local state
+      setMails((prevMails) => prevMails.filter((m) => m.id !== mail.id));
+
+      // Adjust unread count if the mail was unread
+      if (!mail.read) setUnreadCount((prev) => prev - 1);
+    } catch (error) {
+      console.error("Error deleting mail:", error);
+    }
+  };
+
   useEffect(() => {
     fetchMails();
   }, [user.email]);
+
   return (
     <Container className="mt-2">
       <h3 className="mb-3">
@@ -74,18 +86,31 @@ export default function Home() {
         <Card
           className={`mb-3 ${!mail.read ? "border-primary" : ""}`}
           key={mail.id}
-          style={{ cursor: "pointer" }}
-          onClick={() => handleMailClick(mail)}
         >
-          <Card.Header>
+          <Card.Header
+            style={{ cursor: "pointer" }}
+            onClick={() => handleMailClick(mail)}
+          >
             <strong>From:</strong> {mail.from} | <strong>To:</strong> {mail.to}{" "}
             {!mail.read && <Badge bg="primary">Unread</Badge>}
           </Card.Header>
-          <Card.Body>
+          <Card.Body style={{ cursor: "pointer" }} onClick={() => handleMailClick(mail)}>
             <div>{mail.message.substring(0, 50)}...</div>
             <small className="text-muted">
               {new Date(mail.timestamp).toLocaleString()}
             </small>
+            <div className="mt-2">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering mail click
+                  handleDelete(mail);
+                }}
+              >
+                Delete
+              </Button>
+            </div>
           </Card.Body>
         </Card>
       ))}
