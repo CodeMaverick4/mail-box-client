@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Container, Button, Badge } from "react-bootstrap";
 import axios from "axios";
 import { useNavigate } from "react-router";
@@ -8,27 +8,40 @@ import Inbox from "../components/Inbox";
 export default function Home() {
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showInbox, setShowInbox] = useState(true); 
+  const [showInbox, setShowInbox] = useState(true);
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  console.log(user.email)
+
+  // Track previous data to avoid unnecessary re-renders
+  const prevMailIds = useRef(new Set());
 
   const fetchMails = async () => {
     try {
       const url = `https://todo-app-75d12-default-rtdb.firebaseio.com/mails.json`;
       const response = await axios.get(url);
 
-      let unread = 0;
-
       if (response.data) {
+        let unread = 0;
         const mailList = Object.keys(response.data).map((key) => {
           const mail = response.data[key];
           if (!mail.read && mail.to === user.email) unread += 1;
           return { id: key, ...mail };
         });
 
-        setUnreadCount(unread);
-        setMails(mailList);
+        // 💡 only update state if there is any change (optimization)
+        const currentIds = new Set(mailList.map((m) => m.id));
+        const isChanged =
+          mailList.length !== prevMailIds.current.size ||
+          [...currentIds].some((id) => !prevMailIds.current.has(id));
+
+        if (isChanged) {
+          prevMailIds.current = currentIds;
+          setMails(mailList);
+          setUnreadCount(unread);
+        } else {
+          // still update unread count if changed
+          setUnreadCount(unread);
+        }
       }
     } catch (error) {
       console.error("Error fetching mails:", error);
@@ -67,8 +80,16 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (user?.email) fetchMails();
-  }, [user.email]);
+    if (!user?.email) return;
+
+    // Fetch immediately
+    fetchMails();
+
+    // ⏳ Poll every 2 seconds
+    const interval = setInterval(fetchMails, 2000);
+
+    return () => clearInterval(interval);
+  }, [user?.email]);
 
   const filteredMails = mails
     .filter((mail) =>
@@ -79,8 +100,7 @@ export default function Home() {
   return (
     <Container className="mt-2">
       <h3 className="mb-3">
-        Welcome to Mail Box!!!{" "}
-        <Badge bg="danger">{unreadCount} Unread</Badge>
+        Welcome to Mail Box!!! <Badge bg="danger">{unreadCount} Unread</Badge>
       </h3>
       <hr />
 
