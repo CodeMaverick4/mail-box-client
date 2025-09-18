@@ -3,9 +3,11 @@ import { Container, Form, Button, InputGroup, Row, Col } from "react-bootstrap";
 import { TypeBold, TypeItalic, Paperclip, Link } from "react-bootstrap-icons";
 import axios from "axios";
 import { useNavigate } from "react-router";
+import { useSelector } from "react-redux";
 
 function MailForm() {
-    const [from, setFrom] = useState("");
+    const { user } = useSelector((state) => state.auth);
+    const [from, setFrom] = useState(user.email);
     const [to, setTo] = useState("");
     const [message, setMessage] = useState("");
     const messageRef = useRef(null);
@@ -57,7 +59,7 @@ function MailForm() {
                     <h3 className="mb-3 text-center">Compose Mail</h3>
                     <Form>
                         {/* From */}
-                        <Form.Group className="mb-3" controlId="formFrom">
+                        {/* <Form.Group className="mb-3" controlId="formFrom">
                             <Form.Label>From</Form.Label>
                             <Form.Control
                                 type="email"
@@ -65,7 +67,7 @@ function MailForm() {
                                 value={from}
                                 onChange={(e) => setFrom(e.target.value)}
                             />
-                        </Form.Group>
+                        </Form.Group> */}
 
                         {/* To */}
                         <Form.Group className="mb-3" controlId="formTo">

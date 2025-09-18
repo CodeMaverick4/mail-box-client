@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { Container, Card, Button, Badge } from "react-bootstrap";
+import { Container, Button, Badge } from "react-bootstrap";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { useSelector } from "react-redux";
+import Inbox from "../components/Inbox";
 
 export default function Home() {
   const [mails, setMails] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showInbox, setShowInbox] = useState(true); 
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [unreadCount, setUnreadCount] = useState(0);
+  console.log(user.email)
 
   const fetchMails = async () => {
     try {
@@ -18,13 +21,11 @@ export default function Home() {
       let unread = 0;
 
       if (response.data) {
-        const mailList = Object.keys(response.data)
-          .map((key) => {
-            if (!response.data[key].read) unread += 1;
-            return { id: key, ...response.data[key] };
-          })
-          // .filter((mail) => mail.to === user.email)
-          // .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const mailList = Object.keys(response.data).map((key) => {
+          const mail = response.data[key];
+          if (!mail.read && mail.to === user.email) unread += 1;
+          return { id: key, ...mail };
+        });
 
         setUnreadCount(unread);
         setMails(mailList);
@@ -55,65 +56,59 @@ export default function Home() {
       const deleteUrl = `https://todo-app-75d12-default-rtdb.firebaseio.com/mails/${mail.id}.json`;
       await axios.delete(deleteUrl);
 
-      // Update local state
       setMails((prevMails) => prevMails.filter((m) => m.id !== mail.id));
 
-      // Adjust unread count if the mail was unread
-      if (!mail.read) setUnreadCount((prev) => prev - 1);
+      if (!mail.read && mail.to === user.email) {
+        setUnreadCount((prev) => prev - 1);
+      }
     } catch (error) {
       console.error("Error deleting mail:", error);
     }
   };
 
   useEffect(() => {
-    fetchMails();
+    if (user?.email) fetchMails();
   }, [user.email]);
+
+  const filteredMails = mails
+    .filter((mail) =>
+      showInbox ? mail.to === user.email : mail.from === user.email
+    )
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   return (
     <Container className="mt-2">
       <h3 className="mb-3">
-        Welcome to Mail Box!!! <Badge bg="danger">{unreadCount} Unread</Badge>
+        Welcome to Mail Box!!!{" "}
+        <Badge bg="danger">{unreadCount} Unread</Badge>
       </h3>
       <hr />
-      <div className="d-flex justify-content-end mb-2">
-        <Button variant="primary" onClick={() => navigate("/mail")}>
+
+      <div className="d-flex justify-content-between mb-2">
+        <div className="d-flex align-items-center gap-3">
+          <Button
+            variant={showInbox ? "primary" : "outline-primary"}
+            onClick={() => setShowInbox(true)}
+          >
+            Inbox
+          </Button>
+          <Button
+            variant={!showInbox ? "primary" : "outline-primary"}
+            onClick={() => setShowInbox(false)}
+          >
+            Sent Mail
+          </Button>
+        </div>
+        <Button variant="success" onClick={() => navigate("/mail")}>
           Compose
         </Button>
       </div>
-      {mails.length === 0 && <p>No mails yet.</p>}
 
-      {mails.map((mail) => (
-        <Card
-          className={`mb-3 ${!mail.read ? "border-primary" : ""}`}
-          key={mail.id}
-        >
-          <Card.Header
-            style={{ cursor: "pointer" }}
-            onClick={() => handleMailClick(mail)}
-          >
-            <strong>From:</strong> {mail.from} | <strong>To:</strong> {mail.to}{" "}
-            {!mail.read && <Badge bg="primary">Unread</Badge>}
-          </Card.Header>
-          <Card.Body style={{ cursor: "pointer" }} onClick={() => handleMailClick(mail)}>
-            <div>{mail.message.substring(0, 50)}...</div>
-            <small className="text-muted">
-              {new Date(mail.timestamp).toLocaleString()}
-            </small>
-            <div className="mt-2">
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent triggering mail click
-                  handleDelete(mail);
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </Card.Body>
-        </Card>
-      ))}
+      <Inbox
+        handleDelete={handleDelete}
+        handleMailClick={handleMailClick}
+        mails={filteredMails}
+      />
     </Container>
   );
 }
