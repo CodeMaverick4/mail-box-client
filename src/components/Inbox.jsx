@@ -25,7 +25,7 @@ const Inbox = ({mails,handleMailClick,handleDelete})=>{
                 variant="danger"
                 size="sm"
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent triggering mail click
+                  e.stopPropagation();
                   handleDelete(mail);
                 }}
               >
